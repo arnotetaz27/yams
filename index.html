@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -141,35 +142,31 @@
   .lb-rest{ font-size:.68rem; color:var(--paper); opacity:.5; }
 
   .board-wrap{ flex:1; overflow:auto; padding: 0 16px calc(20px + var(--safe-bottom)); }
-  table{ border-collapse:separate; border-spacing:0; width:100%; background:var(--paper); border-radius:16px; overflow:hidden; box-shadow:0 20px 40px -20px rgba(0,0,0,.5); }
-  thead th{
-    position:sticky; top:0; z-index:3;
-    background:var(--paper); padding:10px 8px;
-    font-size:.78rem; font-weight:600; color:var(--ink-soft);
-    border-bottom:1.6px solid var(--line);
-    text-align:center; white-space:nowrap;
+  .grid-board{
+    display:grid; background:var(--paper); border-radius:16px;
+    box-shadow:0 20px 40px -20px rgba(0,0,0,.5);
+    width:max-content; min-width:100%;
   }
-  thead th.cat-head{ position:sticky; left:0; top:0; z-index:4; text-align:left; padding-left:14px; }
-  tbody th{
-    position:sticky; left:0; z-index:2;
-    background:var(--paper);
-    text-align:left; padding:9px 8px 9px 14px;
-    font-size:.84rem; font-weight:500; color:var(--ink);
-    border-bottom:1px solid var(--line);
-    white-space:nowrap;
+  .gcell{
+    padding:9px 8px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:.95rem; min-width:0;
   }
-  tbody td{
-    border-bottom:1px solid var(--line);
-    text-align:center; padding:4px;
-    min-width:66px;
+  .gcell.label{
+    position:sticky; left:0; z-index:2; background:var(--paper);
+    justify-content:flex-start; text-align:left; padding-left:14px;
+    font-size:.84rem; font-weight:500; color:var(--ink); white-space:nowrap;
   }
-  tr.group-row th, tr.group-row td{
-    background:var(--paper-dim); font-size:.72rem; color:var(--ink-soft);
-    padding:6px 8px; font-weight:600;
+  .gcell.header{
+    position:sticky; top:0; z-index:3; background:var(--paper);
+    padding:10px 8px; font-size:.78rem; font-weight:600; color:var(--ink-soft);
+    border-bottom:1.6px solid var(--line); white-space:nowrap;
   }
-  tr.sub-row th, tr.sub-row td{ background:#F5EEDD; font-weight:600; }
-  tr.total-row th, tr.total-row td{ background:var(--ink); color:var(--paper); font-weight:700; font-size:.95rem; }
-  tr.total-row th{ background:var(--ink); }
+  .gcell.header.label{ z-index:4; }
+  .gcell.group{ background:var(--paper-dim); font-size:.72rem; color:var(--ink-soft); padding:6px 8px; font-weight:600; }
+  .gcell.sub{ background:#F5EEDD; font-weight:600; }
+  .gcell.total{ background:var(--ink); color:var(--paper); font-weight:700; font-size:.95rem; }
+  .gcell.current-col{ box-shadow: inset 0 0 0 2px var(--brick); }
   .cell-btn{
     width:100%; min-height:40px; border-radius:8px; border:none;
     background:transparent; color:var(--ink);
@@ -180,7 +177,7 @@
   }
   .cell-btn.filled{ background:#EFE6CE; }
   .cell-btn.zero{ color:var(--ink-soft); text-decoration:line-through; background:none; border:1.4px dashed var(--line); }
-  td.current-col, th.current-col{ box-shadow: inset 0 0 0 2px var(--brick); }
+  .cell-btn.yams-score{ background:var(--gold-soft); color:#8A6608; border:1.4px solid var(--gold); font-weight:800; }
   .bonus-note{ font-size:.68rem; color:var(--ink-soft); display:block; margin-top:1px; font-weight:400; }
 
   .finished-banner{
@@ -230,8 +227,14 @@
   .stepper-btn{
     width:44px; height:44px; border-radius:12px; border:none;
     background:var(--felt); color:var(--paper); font-size:1.3rem; font-weight:600;
+    flex-shrink:0;
   }
-  .sum-display{ flex:1; text-align:center; font-family:'Fraunces',serif; font-size:2rem; font-weight:700; }
+  .sum-display{
+    flex:1; text-align:center; font-family:'Fraunces',serif; font-size:2rem; font-weight:700;
+    border:none; background:none; color:var(--ink); width:100%; min-width:0;
+    border-bottom:2px dashed var(--line); padding-bottom:4px;
+  }
+  .sum-display:focus{ outline:none; border-bottom-color:var(--brick); }
   .confirm-btn{
     width:100%; border:none; border-radius:12px; background:var(--brick); color:#fff;
     padding:14px; font-size:1rem; font-weight:600; margin-top:6px;
@@ -268,7 +271,7 @@
   <div class="leaderboard" id="leaderboard"></div>
   <div id="finished-banner-wrap"></div>
   <div class="board-wrap">
-    <table id="score-table"></table>
+    <div class="grid-board" id="score-table"></div>
   </div>
 </section>
 
@@ -424,52 +427,55 @@
 
   function cellContent(pIdx, cat){
     var val = state.scores[pIdx][cat.id];
-    var isCurrent = pIdx === state.current;
     if(val === null){
       return '<button class="cell-btn empty" data-p="'+pIdx+'" data-c="'+cat.id+'">—</button>';
     }
-    var cls = val === 0 ? 'cell-btn zero' : 'cell-btn filled';
+    var cls = 'cell-btn filled';
+    if(val === 0) cls = 'cell-btn zero';
+    else if(cat.id === 'yams') cls = 'cell-btn filled yams-score';
     return '<button class="'+cls+'" data-p="'+pIdx+'" data-c="'+cat.id+'">'+val+'</button>';
   }
 
   function renderBoard(){
-    var html = '<thead><tr><th class="cat-head">Catégorie</th>';
+    var n = state.players.length;
+    var gridEl = tableEl;
+    gridEl.style.gridTemplateColumns = '150px repeat('+n+', minmax(78px, 1fr))';
+
+    var cells = [];
+    function push(cls, content){ cells.push('<div class="gcell '+cls+'">'+content+'</div>'); }
+
+    // header row
+    push('header label', 'Catégorie');
     state.players.forEach(function(p, i){
-      html += '<th class="'+(i===state.current && !isGameFinished() ? 'current-col':'')+'">'+escapeHtml(p.name)+'</th>';
+      push('header'+(i===state.current && !isGameFinished() ? ' current-col':''), escapeHtml(p.name));
     });
-    html += '</tr></thead><tbody>';
 
     groupOrder.forEach(function(group){
-      html += '<tr class="group-row"><th>'+group+'</th>';
-      state.players.forEach(function(){ html += '<td></td>'; });
-      html += '</tr>';
+      push('label group', group);
+      state.players.forEach(function(){ push('group',''); });
 
       CATEGORIES.filter(function(c){ return c.group===group; }).forEach(function(cat){
-        html += '<tr><th>'+cat.label+'</th>';
+        push('label', cat.label);
         state.players.forEach(function(p, i){
-          html += '<td class="'+(i===state.current && !isGameFinished() ? 'current-col':'')+'">'+cellContent(i, cat)+'</td>';
+          push(i===state.current && !isGameFinished() ? 'current-col':'', cellContent(i, cat));
         });
-        html += '</tr>';
       });
 
       if(group === 'Chiffres'){
-        html += '<tr class="sub-row"><th>Total<span class="bonus-note">bonus si ≥ '+BONUS_THRESHOLD+'</span></th>';
+        push('label sub', 'Total<span class="bonus-note">bonus si ≥ '+BONUS_THRESHOLD+'</span>');
         state.players.forEach(function(p,i){
           var bonus = hasBonus(i);
-          html += '<td>'+topSum(i)+(bonus ? '<span class="bonus-note">+35 bonus</span>' : '<span class="bonus-note">'+ (BONUS_THRESHOLD - topSum(i) > 0 ? (BONUS_THRESHOLD - topSum(i))+' pour bonus' : '') +'</span>')+'</td>';
+          push('sub', topSum(i)+(bonus ? '<span class="bonus-note">+35 bonus</span>' : '<span class="bonus-note">'+ (BONUS_THRESHOLD - topSum(i) > 0 ? (BONUS_THRESHOLD - topSum(i))+' pour bonus' : '') +'</span>'));
         });
-        html += '</tr>';
       }
     });
 
-    html += '<tr class="total-row"><th>Total général</th>';
-    state.players.forEach(function(p,i){ html += '<td>'+grandTotal(i)+'</td>'; });
-    html += '</tr>';
+    push('label total', 'Total général');
+    state.players.forEach(function(p,i){ push('total', grandTotal(i)); });
 
-    html += '</tbody>';
-    tableEl.innerHTML = html;
+    gridEl.innerHTML = cells.join('');
 
-    tableEl.querySelectorAll('.cell-btn').forEach(function(btn){
+    gridEl.querySelectorAll('.cell-btn').forEach(function(btn){
       btn.addEventListener('click', function(){
         openSheet(parseInt(btn.dataset.p,10), btn.dataset.c);
       });
@@ -546,19 +552,22 @@
         (cat.desc ? '<p class="sheet-sub" style="margin-top:-10px">'+cat.desc+'</p>' : '')+
         '<div class="sum-entry">'+
           '<button class="stepper-btn" id="sum-minus">–</button>'+
-          '<div class="sum-display" id="sum-display">0</div>'+
+          '<input class="sum-display" id="sum-display" type="number" inputmode="numeric" min="0" max="30" value="0">'+
           '<button class="stepper-btn" id="sum-plus">+</button>'+
         '</div>'+
         '<button class="confirm-btn" id="sum-confirm">Valider</button>'+
         '<button class="zero-btn" id="sum-zero">Barrer (0 pt)</button>';
       var display = sheetBody.querySelector('#sum-display');
+      function clampSum(v){ v = parseInt(v,10); if(isNaN(v)) v = 0; return Math.max(0, Math.min(30, v)); }
       sheetBody.querySelector('#sum-minus').addEventListener('click', function(){
-        sumValue = Math.max(0, sumValue-1); display.textContent = sumValue;
+        sumValue = clampSum(sumValue-1); display.value = sumValue;
       });
       sheetBody.querySelector('#sum-plus').addEventListener('click', function(){
-        sumValue = Math.min(30, sumValue+1); display.textContent = sumValue;
+        sumValue = clampSum(sumValue+1); display.value = sumValue;
       });
-      sheetBody.querySelector('#sum-confirm').addEventListener('click', function(){ commitScore(sumValue); });
+      display.addEventListener('input', function(){ sumValue = clampSum(display.value); });
+      display.addEventListener('blur', function(){ sumValue = clampSum(display.value); display.value = sumValue; });
+      sheetBody.querySelector('#sum-confirm').addEventListener('click', function(){ commitScore(clampSum(display.value)); });
       sheetBody.querySelector('#sum-zero').addEventListener('click', function(){ commitScore(0); });
     }
 
