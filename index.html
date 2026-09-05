@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<title>Le Yams des couillons</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Yams">
+<meta name="theme-color" content="#123028">
+<link rel="apple-touch-icon" href="yams.png">
+<link rel="icon" href="yams.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt: #123028;
+    --felt-deep: #0c211b;
+    --paper: #FBF3E3;
+    --paper-dim: #F0E6D2;
+    --line: #DED0AE;
+    --ink: #2A2018;
+    --ink-soft: #7A6C57;
+    --brick: #B23B32;
+    --brick-deep: #8E2E27;
+    --gold: #C9A227;
+    --gold-soft: #F1E4B8;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background: radial-gradient(120% 140% at 50% -10%, var(--felt) 0%, var(--felt-deep) 70%);
+    background-attachment: fixed;
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--ink);
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.serif{font-family:'Fraunces', serif;}
+  button{font-family:inherit; cursor:pointer;}
+  input{font-family:inherit;}
+  .screen{
+    min-height:100dvh;
+    padding: calc(24px + var(--safe-top)) 18px calc(24px + var(--safe-bottom));
+    display:flex; flex-direction:column;
+    transition: opacity .35s ease;
+  }
+  .hidden{display:none !important;}
+
+  /* ---------- SETUP SCREEN ---------- */
+  #setup-screen{ align-items:center; justify-content:center; }
+  .setup-card{
+    width:100%; max-width:420px;
+    background:var(--paper);
+    border-radius:22px;
+    padding:30px 24px 26px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.4) inset;
+    position:relative;
+  }
+  .dice-row{ display:flex; gap:8px; margin-bottom:18px; }
+  .pip-die{
+    width:20px; height:20px; border-radius:5px;
+    background:var(--paper); border:1.6px solid var(--ink);
+    display:grid; place-items:center; position:relative;
+  }
+  .pip-die::after{ content:''; width:6px; height:6px; border-radius:50%; background:var(--ink); }
+  .setup-title{
+    font-size:2.6rem; font-weight:800; letter-spacing:-0.01em;
+    margin:0 0 4px; line-height:0.95; color:var(--ink);
+  }
+  .setup-sub{ margin:0 0 22px; color:var(--ink-soft); font-size:.95rem; }
+  .player-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+  .player-row{ display:flex; align-items:center; gap:10px; }
+  .player-badge{
+    width:28px; height:28px; border-radius:50%;
+    background:var(--felt); color:var(--paper);
+    display:flex; align-items:center; justify-content:center;
+    font-size:.8rem; font-weight:600; flex-shrink:0;
+  }
+  .player-row input{
+    flex:1; min-width:0;
+    border:none; border-bottom:2px solid var(--line);
+    background:transparent; padding:8px 2px;
+    font-size:1.05rem; color:var(--ink);
+  }
+  .player-row input:focus{ outline:none; border-bottom-color:var(--brick); }
+  .player-row input::placeholder{ color:var(--ink-soft); opacity:.6; }
+  .remove-player{
+    border:none; background:none; color:var(--ink-soft);
+    font-size:1.2rem; line-height:1; padding:4px 6px;
+  }
+  .add-player{
+    border:1.6px dashed var(--line); background:none;
+    color:var(--ink-soft); border-radius:12px;
+    padding:11px; font-size:.92rem; margin-bottom:22px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .add-player:active{ background:var(--paper-dim); }
+  .start-btn{
+    width:100%; border:none; border-radius:14px;
+    background:var(--brick); color:#fff;
+    padding:16px; font-size:1.05rem; font-weight:600;
+    box-shadow:0 10px 22px -8px rgba(178,59,50,.6);
+  }
+  .start-btn:active{ background:var(--brick-deep); }
+  .start-btn:disabled{ background:#c9bfa8; box-shadow:none; }
+  .setup-hint{ text-align:center; color:var(--paper-dim); opacity:.65; font-size:.8rem; margin-top:16px; }
+
+  /* ---------- GAME SCREEN ---------- */
+  #game-screen{ padding-left:0; padding-right:0; }
+  .topbar{
+    padding: calc(14px + var(--safe-top)) 16px 12px;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+  }
+  .topbar h2{ margin:0; color:var(--paper); font-size:1.05rem; font-weight:600; line-height:1.15; }
+  .reset-link{
+    border:none; background:none; color:var(--paper); opacity:.55;
+    font-size:.82rem; padding:6px 4px; text-decoration:underline;
+    flex-shrink:0;
+  }
+  .leaderboard{
+    display:flex; gap:8px; overflow-x:auto; padding: 2px 16px 16px;
+    scrollbar-width:none;
+  }
+  .leaderboard::-webkit-scrollbar{display:none;}
+  .lb-chip{
+    flex:0 0 auto; min-width:118px;
+    background: var(--felt-deep);
+    border:1.4px solid rgba(255,255,255,.08);
+    border-radius:14px; padding:10px 12px;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .lb-chip.active{ border-color: var(--gold); background:#1c3a30; }
+  .lb-rank{ font-size:.68rem; color:var(--paper); opacity:.55; }
+  .lb-name{ color:var(--paper); font-weight:600; font-size:.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px; }
+  .lb-score{ color:var(--gold-soft); font-size:1.3rem; font-weight:700; font-family:'Fraunces',serif; }
+  .lb-rest{ font-size:.68rem; color:var(--paper); opacity:.5; }
+
+  .board-wrap{ flex:1; overflow:auto; padding: 0 16px calc(20px + var(--safe-bottom)); }
+  table{ border-collapse:separate; border-spacing:0; width:100%; background:var(--paper); border-radius:16px; overflow:hidden; box-shadow:0 20px 40px -20px rgba(0,0,0,.5); }
+  thead th{
+    position:sticky; top:0; z-index:3;
+    background:var(--paper); padding:10px 8px;
+    font-size:.78rem; font-weight:600; color:var(--ink-soft);
+    border-bottom:1.6px solid var(--line);
+    text-align:center; white-space:nowrap;
+  }
+  thead th.cat-head{ position:sticky; left:0; top:0; z-index:4; text-align:left; padding-left:14px; }
+  tbody th{
+    position:sticky; left:0; z-index:2;
+    background:var(--paper);
+    text-align:left; padding:9px 8px 9px 14px;
+    font-size:.84rem; font-weight:500; color:var(--ink);
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  tbody td{
+    border-bottom:1px solid var(--line);
+    text-align:center; padding:4px;
+    min-width:66px;
+  }
+  tr.group-row th, tr.group-row td{
+    background:var(--paper-dim); font-size:.72rem; color:var(--ink-soft);
+    padding:6px 8px; font-weight:600;
+  }
+  tr.sub-row th, tr.sub-row td{ background:#F5EEDD; font-weight:600; }
+  tr.total-row th, tr.total-row td{ background:var(--ink); color:var(--paper); font-weight:700; font-size:.95rem; }
+  tr.total-row th{ background:var(--ink); }
+  .cell-btn{
+    width:100%; min-height:40px; border-radius:8px; border:none;
+    background:transparent; color:var(--ink);
+    font-size:.95rem; font-weight:600; font-family:'Space Grotesk',sans-serif;
+  }
+  .cell-btn.empty{
+    border:1.4px dashed var(--line); color:var(--ink-soft); font-weight:400; font-size:.8rem;
+  }
+  .cell-btn.filled{ background:#EFE6CE; }
+  .cell-btn.zero{ color:var(--ink-soft); text-decoration:line-through; background:none; border:1.4px dashed var(--line); }
+  td.current-col, th.current-col{ box-shadow: inset 0 0 0 2px var(--brick); }
+  .bonus-note{ font-size:.68rem; color:var(--ink-soft); display:block; margin-top:1px; font-weight:400; }
+
+  .finished-banner{
+    margin:0 16px 14px; background:var(--gold-soft); border-radius:14px;
+    padding:14px 16px; color:var(--ink); font-size:.92rem;
+  }
+  .finished-banner b{ font-family:'Fraunces',serif; font-size:1.05rem; }
+  .new-game-btn{
+    margin-top:10px; border:none; background:var(--ink); color:var(--paper);
+    padding:9px 14px; border-radius:10px; font-size:.85rem; font-weight:600;
+  }
+
+  /* ---------- ENTRY SHEET ---------- */
+  #sheet-backdrop{
+    position:fixed; inset:0; background:rgba(10,15,12,.55);
+    z-index:10; opacity:0; pointer-events:none; transition:opacity .25s ease;
+  }
+  #sheet-backdrop.show{ opacity:1; pointer-events:auto; }
+  #entry-sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:11;
+    background:var(--paper); border-radius:20px 20px 0 0;
+    padding:10px 20px calc(22px + var(--safe-bottom));
+    transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1);
+    box-shadow:0 -20px 50px rgba(0,0,0,.4);
+    max-height:80dvh; overflow-y:auto;
+  }
+  #entry-sheet.show{ transform:translateY(0); }
+  .sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:3px; margin:6px auto 14px; }
+  .sheet-title{ margin:0; font-size:1.2rem; }
+  .sheet-sub{ margin:2px 0 18px; color:var(--ink-soft); font-size:.85rem; }
+  .quick-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .quick-btn{
+    border:1.6px solid var(--line); background:var(--paper);
+    border-radius:12px; padding:14px 6px; font-size:1rem; font-weight:600;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+  }
+  .quick-btn small{ font-weight:400; color:var(--ink-soft); font-size:.7rem; }
+  .quick-btn:active{ background:var(--paper-dim); }
+  .fixed-row{ display:flex; gap:10px; margin-bottom:6px; }
+  .fixed-row .quick-btn{ flex:1; }
+  .quick-btn.gold{ border-color:var(--gold); background:var(--gold-soft); }
+  .zero-btn{
+    width:100%; border:none; background:none; color:var(--ink-soft);
+    text-decoration:underline; font-size:.85rem; padding:10px; margin-top:4px;
+  }
+  .sum-entry{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .stepper-btn{
+    width:44px; height:44px; border-radius:12px; border:none;
+    background:var(--felt); color:var(--paper); font-size:1.3rem; font-weight:600;
+  }
+  .sum-display{ flex:1; text-align:center; font-family:'Fraunces',serif; font-size:2rem; font-weight:700; }
+  .confirm-btn{
+    width:100%; border:none; border-radius:12px; background:var(--brick); color:#fff;
+    padding:14px; font-size:1rem; font-weight:600; margin-top:6px;
+  }
+  .cancel-btn{
+    width:100%; border:none; background:none; color:var(--ink-soft);
+    padding:12px; font-size:.88rem; margin-top:2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= SETUP SCREEN ================= -->
+<section id="setup-screen" class="screen">
+  <div class="setup-card">
+    <div class="dice-row">
+      <div class="pip-die"></div><div class="pip-die"></div><div class="pip-die"></div>
+    </div>
+    <h1 class="setup-title">Le Yams<br>des couillons</h1>
+    <p class="setup-sub">Entrez les joueurs dans l'ordre de passage.</p>
+    <div class="player-list" id="player-list"></div>
+    <button class="add-player" id="add-player-btn">+ Ajouter un joueur</button>
+    <button class="start-btn" id="start-btn" disabled>Lancer la partie</button>
+    <p class="setup-hint">2 joueurs minimum</p>
+  </div>
+</section>
+
+<!-- ================= GAME SCREEN ================= -->
+<section id="game-screen" class="screen hidden">
+  <div class="topbar">
+    <h2>Le Yams des couillons</h2>
+    <button class="reset-link" id="reset-btn">Nouvelle partie</button>
+  </div>
+  <div class="leaderboard" id="leaderboard"></div>
+  <div id="finished-banner-wrap"></div>
+  <div class="board-wrap">
+    <table id="score-table"></table>
+  </div>
+</section>
+
+<!-- ================= ENTRY SHEET ================= -->
+<div id="sheet-backdrop"></div>
+<div id="entry-sheet">
+  <div class="sheet-handle"></div>
+  <h3 class="sheet-title" id="sheet-title">Catégorie</h3>
+  <p class="sheet-sub" id="sheet-sub">Joueur</p>
+  <div id="sheet-body"></div>
+  <button class="cancel-btn" id="sheet-cancel">Annuler</button>
+</div>
+
+<script>
+(function(){
+
+  // ---------- DATA ----------
+  var CATEGORIES = [
+    {group:'Chiffres', id:'as', label:'Un', type:'number', face:1},
+    {group:'Chiffres', id:'deux', label:'Deux', type:'number', face:2},
+    {group:'Chiffres', id:'trois', label:'Trois', type:'number', face:3},
+    {group:'Chiffres', id:'quatre', label:'Quatre', type:'number', face:4},
+    {group:'Chiffres', id:'cinq', label:'Cinq', type:'number', face:5},
+    {group:'Chiffres', id:'six', label:'Six', type:'number', face:6},
+    {group:'Combinaisons', id:'brelan', label:'Brelan', type:'sum', desc:'Somme des 5 dés (min. 3 identiques)'},
+    {group:'Combinaisons', id:'carre', label:'Carré', type:'sum', desc:'Somme des 5 dés (min. 4 identiques)'},
+    {group:'Combinaisons', id:'full', label:'Full', type:'fixed', value:25},
+    {group:'Combinaisons', id:'petite', label:'Petite suite', type:'fixed', value:30},
+    {group:'Combinaisons', id:'grande', label:'Grande suite', type:'fixed', value:40},
+    {group:'Combinaisons', id:'yams', label:'Yams', type:'fixed', value:50},
+    {group:'Combinaisons', id:'chance', label:'Chance', type:'sum', desc:'Somme des 5 dés'}
+  ];
+  var TOP_IDS = ['as','deux','trois','quatre','cinq','six'];
+  var BONUS_THRESHOLD = 63;
+  var BONUS_VALUE = 35;
+
+  // ---------- STATE ----------
+  var state = {
+    players: [],          // [{name}]
+    scores: [],           // scores[playerIdx][catId] = number | null
+    current: 0,
+    sheet: null           // {playerIdx, cat}
+  };
+
+  // ---------- SETUP SCREEN ----------
+  var playerListEl = document.getElementById('player-list');
+  var addPlayerBtn = document.getElementById('add-player-btn');
+  var startBtn = document.getElementById('start-btn');
+  var setupNames = ['', ''];
+
+  function renderSetup(){
+    playerListEl.innerHTML = '';
+    setupNames.forEach(function(name, i){
+      var row = document.createElement('div');
+      row.className = 'player-row';
+      row.innerHTML =
+        '<div class="player-badge">'+(i+1)+'</div>'+
+        '<input type="text" maxlength="18" placeholder="Joueur '+(i+1)+'" value="'+escapeAttr(name)+'">'+
+        (setupNames.length>2 ? '<button class="remove-player" data-i="'+i+'">✕</button>' : '');
+      playerListEl.appendChild(row);
+    });
+    var inputs = playerListEl.querySelectorAll('input');
+    inputs.forEach(function(inp, i){
+      inp.addEventListener('input', function(){ setupNames[i] = inp.value; checkStart(); });
+    });
+    playerListEl.querySelectorAll('.remove-player').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        setupNames.splice(parseInt(btn.dataset.i,10), 1);
+        renderSetup();
+      });
+    });
+    checkStart();
+  }
+  function checkStart(){
+    var filled = setupNames.filter(function(n){ return n.trim().length>0; });
+    startBtn.disabled = filled.length < 2;
+  }
+  addPlayerBtn.addEventListener('click', function(){
+    if(setupNames.length >= 10) return;
+    setupNames.push('');
+    renderSetup();
+  });
+  startBtn.addEventListener('click', function(){
+    var names = setupNames.map(function(n){ return n.trim(); }).filter(Boolean);
+    state.players = names.map(function(n){ return {name:n}; });
+    state.scores = names.map(function(){
+      var s = {}; CATEGORIES.forEach(function(c){ s[c.id] = null; }); return s;
+    });
+    state.current = 0;
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
+    renderGame();
+  });
+  renderSetup();
+
+  // ---------- HELPERS ----------
+  function escapeAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+  function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function topSum(pIdx){
+    var s = state.scores[pIdx], sum = 0;
+    TOP_IDS.forEach(function(id){ sum += s[id] || 0; });
+    return sum;
+  }
+  function hasBonus(pIdx){ return topSum(pIdx) >= BONUS_THRESHOLD; }
+  function bottomSum(pIdx){
+    var s = state.scores[pIdx], sum = 0;
+    CATEGORIES.forEach(function(c){ if(c.group==='Combinaisons') sum += s[c.id] || 0; });
+    return sum;
+  }
+  function grandTotal(pIdx){
+    return topSum(pIdx) + (hasBonus(pIdx) ? BONUS_VALUE : 0) + bottomSum(pIdx);
+  }
+  function remainingCount(pIdx){
+    var s = state.scores[pIdx], n = 0;
+    CATEGORIES.forEach(function(c){ if(s[c.id] === null) n++; });
+    return n;
+  }
+  function isGameFinished(){
+    return state.players.every(function(_, i){ return remainingCount(i) === 0; });
+  }
+  function advanceTurn(){
+    if(isGameFinished()) return;
+    var n = state.players.length, tries = 0, idx = state.current;
+    do {
+      idx = (idx + 1) % n;
+      tries++;
+    } while(remainingCount(idx) === 0 && tries <= n);
+    state.current = idx;
+  }
+
+  // ---------- LEADERBOARD ----------
+  var leaderboardEl = document.getElementById('leaderboard');
+  function renderLeaderboard(){
+    var ranked = state.players.map(function(p,i){
+      return {i:i, name:p.name, total: grandTotal(i), rest: remainingCount(i)};
+    }).sort(function(a,b){ return b.total - a.total; });
+
+    leaderboardEl.innerHTML = ranked.map(function(r, rank){
+      var active = r.i === state.current && !isGameFinished();
+      return '<div class="lb-chip'+(active?' active':'')+'">'+
+        '<span class="lb-rank">'+(rank+1)+(rank===0 && r.total>0 ? ' · en tête' : '')+'</span>'+
+        '<span class="lb-name">'+escapeHtml(r.name)+'</span>'+
+        '<span class="lb-score">'+r.total+'</span>'+
+        '<span class="lb-rest">'+(r.rest===0 ? 'terminé' : r.rest+' restantes')+'</span>'+
+      '</div>';
+    }).join('');
+  }
+
+  // ---------- BOARD ----------
+  var tableEl = document.getElementById('score-table');
+  var groupOrder = ['Chiffres','Combinaisons'];
+
+  function cellContent(pIdx, cat){
+    var val = state.scores[pIdx][cat.id];
+    var isCurrent = pIdx === state.current;
+    if(val === null){
+      return '<button class="cell-btn empty" data-p="'+pIdx+'" data-c="'+cat.id+'">—</button>';
+    }
+    var cls = val === 0 ? 'cell-btn zero' : 'cell-btn filled';
+    return '<button class="'+cls+'" data-p="'+pIdx+'" data-c="'+cat.id+'">'+val+'</button>';
+  }
+
+  function renderBoard(){
+    var html = '<thead><tr><th class="cat-head">Catégorie</th>';
+    state.players.forEach(function(p, i){
+      html += '<th class="'+(i===state.current && !isGameFinished() ? 'current-col':'')+'">'+escapeHtml(p.name)+'</th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    groupOrder.forEach(function(group){
+      html += '<tr class="group-row"><th>'+group+'</th>';
+      state.players.forEach(function(){ html += '<td></td>'; });
+      html += '</tr>';
+
+      CATEGORIES.filter(function(c){ return c.group===group; }).forEach(function(cat){
+        html += '<tr><th>'+cat.label+'</th>';
+        state.players.forEach(function(p, i){
+          html += '<td class="'+(i===state.current && !isGameFinished() ? 'current-col':'')+'">'+cellContent(i, cat)+'</td>';
+        });
+        html += '</tr>';
+      });
+
+      if(group === 'Chiffres'){
+        html += '<tr class="sub-row"><th>Total<span class="bonus-note">bonus si ≥ '+BONUS_THRESHOLD+'</span></th>';
+        state.players.forEach(function(p,i){
+          var bonus = hasBonus(i);
+          html += '<td>'+topSum(i)+(bonus ? '<span class="bonus-note">+35 bonus</span>' : '<span class="bonus-note">'+ (BONUS_THRESHOLD - topSum(i) > 0 ? (BONUS_THRESHOLD - topSum(i))+' pour bonus' : '') +'</span>')+'</td>';
+        });
+        html += '</tr>';
+      }
+    });
+
+    html += '<tr class="total-row"><th>Total général</th>';
+    state.players.forEach(function(p,i){ html += '<td>'+grandTotal(i)+'</td>'; });
+    html += '</tr>';
+
+    html += '</tbody>';
+    tableEl.innerHTML = html;
+
+    tableEl.querySelectorAll('.cell-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        openSheet(parseInt(btn.dataset.p,10), btn.dataset.c);
+      });
+    });
+  }
+
+  function renderFinishedBanner(){
+    var wrap = document.getElementById('finished-banner-wrap');
+    if(!isGameFinished()){ wrap.innerHTML=''; return; }
+    var ranked = state.players.map(function(p,i){ return {name:p.name, total:grandTotal(i)}; })
+      .sort(function(a,b){ return b.total-a.total; });
+    wrap.innerHTML = '<div class="finished-banner">Partie terminée — <b>'+escapeHtml(ranked[0].name)+'</b> gagne avec '+ranked[0].total+' points.'+
+      '<br><button class="new-game-btn" id="rematch-btn">Rejouer</button></div>';
+    document.getElementById('rematch-btn').addEventListener('click', function(){
+      state.scores = state.players.map(function(){
+        var s = {}; CATEGORIES.forEach(function(c){ s[c.id] = null; }); return s;
+      });
+      state.current = 0;
+      renderGame();
+    });
+  }
+
+  function renderGame(){
+    renderLeaderboard();
+    renderFinishedBanner();
+    renderBoard();
+  }
+
+  document.getElementById('reset-btn').addEventListener('click', function(){
+    if(!confirm('Recommencer une nouvelle partie avec de nouveaux joueurs ?')) return;
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('setup-screen').classList.remove('hidden');
+    setupNames = ['',''];
+    renderSetup();
+  });
+
+  // ---------- ENTRY SHEET ----------
+  var backdrop = document.getElementById('sheet-backdrop');
+  var sheet = document.getElementById('entry-sheet');
+  var sheetTitle = document.getElementById('sheet-title');
+  var sheetSub = document.getElementById('sheet-sub');
+  var sheetBody = document.getElementById('sheet-body');
+  var sumValue = 0;
+
+  function openSheet(pIdx, catId){
+    var cat = CATEGORIES.filter(function(c){ return c.id===catId; })[0];
+    state.sheet = {pIdx:pIdx, cat:cat};
+    sheetTitle.textContent = cat.label;
+    sheetSub.textContent = state.players[pIdx].name;
+
+    if(cat.type === 'number'){
+      var grid = '<div class="quick-grid">';
+      for(var n=0; n<=5; n++){
+        grid += '<button class="quick-btn" data-val="'+(n*cat.face)+'">'+(n*cat.face)+'<small>'+n+' × '+cat.face+'</small></button>';
+      }
+      grid += '</div>';
+      sheetBody.innerHTML = grid;
+      sheetBody.querySelectorAll('.quick-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){ commitScore(parseInt(btn.dataset.val,10)); });
+      });
+    } else if(cat.type === 'fixed'){
+      sheetBody.innerHTML =
+        '<p class="sheet-sub" style="margin-top:-10px">Valeur fixe si réalisé, sinon barré.</p>'+
+        '<div class="fixed-row">'+
+          '<button class="quick-btn gold" data-val="'+cat.value+'">'+cat.value+' pts</button>'+
+          '<button class="quick-btn" data-val="0">Barré</button>'+
+        '</div>';
+      sheetBody.querySelectorAll('.quick-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){ commitScore(parseInt(btn.dataset.val,10)); });
+      });
+    } else { // sum
+      sumValue = 0;
+      sheetBody.innerHTML =
+        (cat.desc ? '<p class="sheet-sub" style="margin-top:-10px">'+cat.desc+'</p>' : '')+
+        '<div class="sum-entry">'+
+          '<button class="stepper-btn" id="sum-minus">–</button>'+
+          '<div class="sum-display" id="sum-display">0</div>'+
+          '<button class="stepper-btn" id="sum-plus">+</button>'+
+        '</div>'+
+        '<button class="confirm-btn" id="sum-confirm">Valider</button>'+
+        '<button class="zero-btn" id="sum-zero">Barrer (0 pt)</button>';
+      var display = sheetBody.querySelector('#sum-display');
+      sheetBody.querySelector('#sum-minus').addEventListener('click', function(){
+        sumValue = Math.max(0, sumValue-1); display.textContent = sumValue;
+      });
+      sheetBody.querySelector('#sum-plus').addEventListener('click', function(){
+        sumValue = Math.min(30, sumValue+1); display.textContent = sumValue;
+      });
+      sheetBody.querySelector('#sum-confirm').addEventListener('click', function(){ commitScore(sumValue); });
+      sheetBody.querySelector('#sum-zero').addEventListener('click', function(){ commitScore(0); });
+    }
+
+    backdrop.classList.add('show');
+    sheet.classList.add('show');
+  }
+
+  function closeSheet(){
+    backdrop.classList.remove('show');
+    sheet.classList.remove('show');
+    state.sheet = null;
+  }
+
+  function commitScore(val){
+    if(!state.sheet) return;
+    var wasCurrent = state.sheet.pIdx === state.current;
+    state.scores[state.sheet.pIdx][state.sheet.cat.id] = val;
+    closeSheet();
+    if(wasCurrent) advanceTurn();
+    renderGame();
+  }
+
+  backdrop.addEventListener('click', closeSheet);
+  document.getElementById('sheet-cancel').addEventListener('click', closeSheet);
+
+})();
+</script>
+</body>
+</html>
